@@ -45,6 +45,9 @@ jobs:
             image=$(echo "$i" | jq -r '.image')
             echo "ROCK_$name=$image" >> $GITHUB_ENV
           done
+      - name: Run lint
+        run: |
+          tox --conf tests/tox.ini -e lint
       - name: Run sanity tests
         env:
           BUILT_ROCKS_METADATA: ${{ inputs.rock-metas }}
