@@ -1,0 +1,72 @@
+name: Auto-merge Successful PRs
+
+on:
+  workflow_call:
+    inputs:
+      approve-msg:
+        description: 'Message to use when approving PRs'
+        type: string
+        required: false
+      dry-run:
+        description: 'Dry run mode'
+        type: boolean
+        required: false
+        default: true
+      bot-authors:
+        description: |
+          Comma-separated list of authors to for auto-merging
+          The labels are not considered if the PR comes from a bot author
+        type: string
+        required: false
+        default: 'app/dependabot,app/renovate'
+      labels:
+        description: |
+          Comma-separated list of labels to require for auto-merging
+        type: string
+        required: false
+        default: 'automerge'
+      min-passing-checks:
+        description: 'Minimum number of checks that must pass to merge'
+        type: number
+        required: true
+      workflow-ref:
+        description: 'The ref to use for the workflow repo'
+        type: string
+        required: false
+        default: 'main'
+      
+permissions:
+  contents: read
+
+env:
+  APPROVE_MSG: ${{ inputs.approve-msg }}
+  BOT_AUTHORS: ${{ inputs.bot-authors }}
+  DRY_RUN: ${{ inputs.dry-run }}
+  GITHUB_TOKEN: ${{ secrets.REPO_ACCESS_TOKEN || secrets.GITHUB_TOKEN }}
+  LABELS: ${{ inputs.labels }}
+  MIN_PASSING_CHECKS: ${{ inputs.min-passing-checks }}
+
+jobs:
+  merge-successful-prs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checking out the caller's repo
+        uses: actions/checkout@v4
+        with:
+          path: caller-repo
+
+      - name: Checking out the workflows repo
+        uses: actions/checkout@v4
+        with:
+          repository: canonical/k8s-workflows
+          ref: ${{ inputs.workflow-ref }}
+          path: workflow-repo
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Auto-merge ready pull requests
+        run: |
+          pushd caller-repo
+          python3 ../workflow-repo/.github/files/auto-merge-successful-pr.py
